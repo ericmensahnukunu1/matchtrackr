@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MatchTrackr — Historical Soccer Predictions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0D1B3E;
+  --navy-mid:#152347;
+  --navy-light:#1E3264;
+  --teal:#1CB6A0;
+  --teal-light:#2ED4BC;
+  --teal-dim:#0E8A78;
+  --sky:#4DBCE9;
+  --white:#F0F4FF;
+  --muted:#7A8BAD;
+  --border:rgba(255,255,255,0.07);
+  --border-hover:rgba(28,182,160,0.3);
+  --card:rgba(21,35,71,0.6);
+  --card-solid:#152347;
+  --font-head:'Syne',sans-serif;
+  --font-body:'DM Sans',sans-serif;
+  --font-mono:'DM Mono',monospace;
+  --radius:12px;
+  --radius-lg:20px;
+}
+html{scroll-behavior:smooth}
+body{
+  background:var(--navy);
+  color:var(--white);
+  font-family:var(--font-body);
+  font-size:15px;
+  line-height:1.6;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* ── Background ── */
+.bg-grid{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(28,182,160,0.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(28,182,160,0.03) 1px,transparent 1px);
+  background-size:48px 48px;
+}
+.bg-glow{
+  position:fixed;z-index:0;pointer-events:none;
+  width:600px;height:600px;border-radius:50%;
+  background:radial-gradient(circle,rgba(28,182,160,0.08) 0%,transparent 70%);
+  top:-200px;right:-150px;
+}
+.bg-glow2{
+  position:fixed;z-index:0;pointer-events:none;
+  width:500px;height:500px;border-radius:50%;
+  background:radial-gradient(circle,rgba(77,188,233,0.06) 0%,transparent 70%);
+  bottom:-150px;left:-100px;
+}
+
+/* ── Layout ── */
+.app{position:relative;z-index:1;display:flex;min-height:100vh}
+
+/* ── Sidebar ── */
+.sidebar{
+  width:240px;min-height:100vh;flex-shrink:0;
+  background:rgba(13,27,62,0.95);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  padding:0;position:sticky;top:0;height:100vh;
+  backdrop-filter:blur(20px);
+}
+.sidebar-logo{
+  padding:24px 20px 20px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:12px;
+}
+.logo-icon{
+  width:38px;height:38px;border-radius:10px;
+  background:linear-gradient(135deg,var(--teal),var(--sky));
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;flex-shrink:0;
+}
+.logo-text{font-family:var(--font-head);font-size:17px;font-weight:700;line-height:1.1}
+.logo-text span{color:var(--teal)}
+.logo-sub{font-size:9px;letter-spacing:0.12em;color:var(--muted);text-transform:uppercase;margin-top:1px}
+
+.nav-section{padding:20px 12px 8px;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.nav-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 14px;margin:1px 8px;border-radius:9px;
+  cursor:pointer;transition:all .2s;color:var(--muted);font-size:14px;
+  font-family:var(--font-body);border:none;background:none;width:calc(100% - 16px);text-align:left;
+}
+.nav-item:hover{background:rgba(28,182,160,0.08);color:var(--white)}
+.nav-item.active{background:rgba(28,182,160,0.15);color:var(--teal);}
+.nav-item .nav-icon{font-size:16px;width:20px;text-align:center;flex-shrink:0}
+.nav-badge{margin-left:auto;background:var(--teal);color:var(--navy);font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;font-family:var(--font-mono)}
+
+.sidebar-footer{
+  margin-top:auto;padding:16px;border-top:1px solid var(--border);
+  font-size:12px;color:var(--muted);
+}
+.live-dot{display:inline-block;width:7px;height:7px;background:#22c55e;border-radius:50%;margin-right:6px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(0.8)}}
+
+/* ── Main ── */
+.main{flex:1;overflow-x:hidden}
+
+/* ── Topbar ── */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 32px;border-bottom:1px solid var(--border);
+  background:rgba(13,27,62,0.7);backdrop-filter:blur(20px);
+  position:sticky;top:0;z-index:10;
+}
+.topbar-left{display:flex;align-items:center;gap:16px}
+.page-title{font-family:var(--font-head);font-size:20px;font-weight:700}
+.breadcrumb{font-size:13px;color:var(--muted)}
+.breadcrumb span{color:var(--teal)}
+.search-box{
+  display:flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,0.05);border:1px solid var(--border);
+  border-radius:9px;padding:7px 14px;
+  transition:border-color .2s;
+}
+.search-box:focus-within{border-color:var(--teal-dim)}
+.search-box input{background:none;border:none;color:var(--white);font-size:14px;font-family:var(--font-body);outline:none;width:200px}
+.search-box input::placeholder{color:var(--muted)}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.btn-icon{
+  width:34px;height:34px;border-radius:8px;
+  background:rgba(255,255,255,0.05);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:all .2s;font-size:15px;color:var(--muted);
+}
+.btn-icon:hover{border-color:var(--border-hover);color:var(--teal)}
+.avatar{
+  width:34px;height:34px;border-radius:50%;
+  background:linear-gradient(135deg,var(--teal),var(--sky));
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;font-family:var(--font-head);cursor:pointer;
+}
+
+/* ── Views ── */
+.view{display:none;padding:28px 32px;animation:fadeIn .25s ease}
+.view.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Stat Cards Row ── */
+.stat-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+.stat-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:18px 20px;
+  backdrop-filter:blur(12px);position:relative;overflow:hidden;
+  transition:border-color .2s, transform .2s;cursor:default;
+}
+.stat-card::before{
+  content:'';position:absolute;top:-30px;right:-30px;
+  width:80px;height:80px;border-radius:50%;
+  background:radial-gradient(circle,rgba(28,182,160,0.12),transparent);
+  pointer-events:none;
+}
+.stat-card:hover{border-color:var(--border-hover);transform:translateY(-2px)}
+.stat-label{font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-weight:500}
+.stat-value{font-family:var(--font-head);font-size:28px;font-weight:800;line-height:1}
+.stat-value.teal{color:var(--teal)}
+.stat-value.sky{color:var(--sky)}
+.stat-change{font-size:12px;color:var(--muted);margin-top:6px}
+.stat-change .up{color:#22c55e}.stat-change .dn{color:#f43f5e}
+
+/* ── Section Header ── */
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.section-title{font-family:var(--font-head);font-size:17px;font-weight:700}
+.section-link{font-size:13px;color:var(--teal);cursor:pointer;text-decoration:none}
+.section-link:hover{text-decoration:underline}
+
+/* ── Grid layout ── */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:22px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-bottom:22px}
+.col-span-2{grid-column:span 2}
+
+/* ── Card ── */
+.card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:20px;
+  backdrop-filter:blur(12px);
+}
+.card-title{font-family:var(--font-head);font-size:15px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.tag{
+  display:inline-flex;align-items:center;
+  font-size:10px;font-weight:600;letter-spacing:0.08em;
+  padding:2px 8px;border-radius:20px;text-transform:uppercase;
+}
+.tag-live{background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3)}
+.tag-teal{background:rgba(28,182,160,0.15);color:var(--teal);border:1px solid rgba(28,182,160,0.3)}
+.tag-sky{background:rgba(77,188,233,0.15);color:var(--sky);border:1px solid rgba(77,188,233,0.3)}
+.tag-orange{background:rgba(251,146,60,0.15);color:#fb923c;border:1px solid rgba(251,146,60,0.3)}
+.tag-red{background:rgba(244,63,94,0.15);color:#f43f5e;border:1px solid rgba(244,63,94,0.3)}
+
+/* ── Match Row ── */
+.match-list{display:flex;flex-direction:column;gap:8px}
+.match-row{
+  display:grid;grid-template-columns:1fr auto 1fr;align-items:center;
+  gap:12px;padding:12px 16px;border-radius:10px;
+  background:rgba(255,255,255,0.03);border:1px solid transparent;
+  cursor:pointer;transition:all .18s;
+}
+.match-row:hover{background:rgba(28,182,160,0.07);border-color:var(--border-hover)}
+.team-name{font-weight:500;font-size:14px}
+.team-home{text-align:right}
+.team-away{text-align:left}
+.score-block{text-align:center;min-width:60px}
+.score{font-family:var(--font-mono);font-size:18px;font-weight:500;color:var(--white)}
+.score-time{font-size:11px;color:var(--teal);font-family:var(--font-mono)}
+.score-ht{font-size:10px;color:var(--muted);font-family:var(--font-mono)}
+.league-tag{font-size:10px;color:var(--muted);letter-spacing:.06em}
+
+/* ── Bar chart ── */
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.bar-label{font-size:12px;color:var(--muted);width:80px;flex-shrink:0;text-align:right}
+.bar-label.left{text-align:left}
+.bar-track{flex:1;height:6px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.bar-fill.teal{background:linear-gradient(90deg,var(--teal-dim),var(--teal))}
+.bar-fill.sky{background:linear-gradient(90deg,#2563eb,var(--sky))}
+.bar-fill.orange{background:linear-gradient(90deg,#ea580c,#fb923c)}
+.bar-pct{font-size:12px;font-family:var(--font-mono);color:var(--white);width:36px;text-align:right;flex-shrink:0}
+
+/* ── HT/FT Grid ── */
+.htft-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.htft-cell{
+  border-radius:8px;padding:8px;text-align:center;
+  background:rgba(255,255,255,0.04);border:1px solid var(--border);
+  transition:all .2s;
+}
+.htft-cell:hover{border-color:var(--border-hover);transform:scale(1.04)}
+.htft-code{font-family:var(--font-mono);font-size:13px;font-weight:500;color:var(--teal)}
+.htft-count{font-size:18px;font-weight:700;font-family:var(--font-head);line-height:1;margin:2px 0}
+.htft-pct{font-size:10px;color:var(--muted)}
+
+/* ── Table ── */
+.data-table{width:100%;border-collapse:collapse}
+.data-table th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)}
+.data-table td{padding:10px 10px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:13px}
+.data-table tr:last-child td{border-bottom:none}
+.data-table tr:hover td{background:rgba(28,182,160,0.04)}
+.rank-num{font-family:var(--font-mono);color:var(--muted);font-size:12px}
+.team-cell{display:flex;align-items:center;gap:8px}
+.team-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.pts{font-family:var(--font-mono);font-weight:500;color:var(--teal)}
+.form-dots{display:flex;gap:3px}
+.fd{width:16px;height:16px;border-radius:4px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono)}
+.fd-w{background:rgba(34,197,94,0.25);color:#22c55e}
+.fd-d{background:rgba(250,204,21,0.2);color:#facc15}
+.fd-l{background:rgba(244,63,94,0.2);color:#f43f5e}
+
+/* ── Prediction Card ── */
+.pred-card{
+  border-radius:var(--radius-lg);padding:20px;
+  background:linear-gradient(135deg,rgba(21,35,71,0.9),rgba(30,50,100,0.6));
+  border:1px solid var(--border);
+  cursor:pointer;transition:all .2s;
+}
+.pred-card:hover{border-color:var(--border-hover);transform:translateY(-2px)}
+.pred-teams{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.pred-team{font-family:var(--font-head);font-size:15px;font-weight:700}
+.pred-vs{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.pred-bars{display:flex;gap:6px;margin-bottom:10px}
+.pred-bar-wrap{flex:1;text-align:center}
+.pred-bar-label{font-size:10px;color:var(--muted);margin-bottom:4px;letter-spacing:.06em;text-transform:uppercase}
+.pred-bar-outer{height:56px;background:rgba(255,255,255,0.06);border-radius:6px;position:relative;overflow:hidden;display:flex;align-items:flex-end}
+.pred-bar-inner{width:100%;border-radius:6px;transition:height .8s cubic-bezier(.4,0,.2,1)}
+.pred-bar-inner.home{background:linear-gradient(0deg,var(--teal-dim),var(--teal))}
+.pred-bar-inner.draw{background:linear-gradient(0deg,#3b4a6b,#4e5d7d)}
+.pred-bar-inner.away{background:linear-gradient(0deg,#1d4ed8,var(--sky))}
+.pred-pct{font-family:var(--font-mono);font-size:13px;font-weight:500;margin-top:5px}
+.pred-meta{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)}
+.confidence{display:flex;align-items:center;gap:4px}
+.conf-dot{width:5px;height:5px;border-radius:50%}
+
+/* ── Tabs ── */
+.tabs{display:flex;gap:2px;background:rgba(255,255,255,0.04);border-radius:10px;padding:3px;margin-bottom:20px;border:1px solid var(--border)}
+.tab{
+  flex:1;padding:7px;text-align:center;border-radius:8px;
+  font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;color:var(--muted);
+  border:none;background:none;font-family:var(--font-body);
+}
+.tab.active{background:rgba(28,182,160,0.2);color:var(--teal)}
+.tab:hover:not(.active){color:var(--white)}
+
+/* ── Progress arc ── */
+.arc-wrap{position:relative;width:90px;height:90px;margin:0 auto 10px}
+.arc-wrap svg{width:100%;height:100%;transform:rotate(-90deg)}
+.arc-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;line-height:1}
+.arc-val{font-family:var(--font-head);font-size:20px;font-weight:800;color:var(--teal)}
+.arc-sub{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+
+/* ── Pill filter ── */
+.pill-row{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.pill{
+  padding:5px 14px;border-radius:20px;font-size:12px;font-weight:500;
+  border:1px solid var(--border);background:transparent;color:var(--muted);
+  cursor:pointer;transition:all .2s;font-family:var(--font-body);
+}
+.pill:hover{border-color:var(--border-hover);color:var(--white)}
+.pill.active{background:rgba(28,182,160,0.15);border-color:var(--teal);color:var(--teal)}
+
+/* ── Timeline ── */
+.timeline{position:relative;padding-left:20px}
+.timeline::before{content:'';position:absolute;left:5px;top:0;bottom:0;width:1px;background:var(--border)}
+.tl-item{position:relative;padding:0 0 14px 16px}
+.tl-dot{
+  position:absolute;left:-16px;top:4px;
+  width:10px;height:10px;border-radius:50%;
+  background:var(--teal);border:2px solid var(--navy);
+}
+.tl-dot.sub{background:var(--muted)}
+.tl-dot.card-y{background:#fbbf24}
+.tl-dot.card-r{background:#f43f5e}
+.tl-min{font-family:var(--font-mono);font-size:11px;color:var(--teal);margin-bottom:2px}
+.tl-text{font-size:13px;color:var(--white)}
+.tl-sub{font-size:11px;color:var(--muted)}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(28,182,160,0.3);border-radius:2px}
+
+/* ── Responsive ── */
+@media(max-width:900px){
+  .sidebar{display:none}
+  .stat-cards{grid-template-columns:repeat(2,1fr)}
+  .grid-2,.grid-3{grid-template-columns:1fr}
+  .col-span-2{grid-column:span 1}
+}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+<div class="bg-glow2"></div>
+
+<div class="app">
+<!-- ── Sidebar ── -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">⚽</div>
+    <div>
+      <div class="logo-text">Match<span>Trackr</span></div>
+      <div class="logo-sub">Historical Soccer Predictions</div>
+    </div>
+  </div>
+
+  <div class="nav-section">Overview</div>
+  <button class="nav-item active" onclick="showView('dashboard')">
+    <span class="nav-icon">📊</span> Dashboard
+  </button>
+  <button class="nav-item" onclick="showView('fixtures')">
+    <span class="nav-icon">📅</span> Fixtures
+    <span class="nav-badge">12</span>
+  </button>
+  <button class="nav-item" onclick="showView('predictions')">
+    <span class="nav-icon">🎯</span> Predictions
+  </button>
+
+  <div class="nav-section">Analytics</div>
+  <button class="nav-item" onclick="showView('team')">
+    <span class="nav-icon">🏟️</span> Team Stats
+  </button>
+  <button class="nav-item" onclick="showView('leagues')">
+    <span class="nav-icon">🏆</span> Leagues
+  </button>
+  <button class="nav-item" onclick="showView('h2h')">
+    <span class="nav-icon">⚡</span> Head-to-Head
+  </button>
+
+  <div class="nav-section">Markets</div>
+  <button class="nav-item" onclick="showView('markets')">
+    <span class="nav-icon">📈</span> Betting Markets
+  </button>
+  <button class="nav-item" onclick="showView('htft')">
+    <span class="nav-icon">🔄</span> HT / FT Analysis
+  </button>
+
+  <div class="sidebar-footer">
+    <div><span class="live-dot"></span>Live data feed active</div>
+    <div style="margin-top:4px;font-size:11px">Updated 2 min ago</div>
+  </div>
+</aside>
+
+<!-- ── Main Content ── -->
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div>
+        <div class="page-title" id="pageTitle">Dashboard</div>
+        <div class="breadcrumb" id="pageBreadcrumb">MatchTrackr / <span>Overview</span></div>
+      </div>
+    </div>
+    <div class="search-box">
+      <span style="color:var(--muted)">🔍</span>
+      <input type="text" placeholder="Search teams, leagues…"/>
+    </div>
+    <div class="topbar-right">
+      <div class="btn-icon" title="Notifications">🔔</div>
+      <div class="btn-icon" title="Settings">⚙️</div>
+      <div class="avatar">MT</div>
+    </div>
+  </div>
+
+  <!-- ══ DASHBOARD ══ -->
+  <div class="view active" id="view-dashboard">
+    <div class="stat-cards">
+      <div class="stat-card">
+        <div class="stat-label">Leagues Tracked</div>
+        <div class="stat-value teal">142</div>
+        <div class="stat-change"><span class="up">↑ 8</span> this season</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Matches Indexed</div>
+        <div class="stat-value sky">284,091</div>
+        <div class="stat-change"><span class="up">+1,204</span> last 7 days</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Live Today</div>
+        <div class="stat-value teal">38</div>
+        <div class="stat-change"><span class="up">↑ 12</span> vs yesterday</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Prediction Accuracy</div>
+        <div class="stat-value">68.4<span style="font-size:16px;color:var(--muted)">%</span></div>
+        <div class="stat-change"><span class="up">↑ 1.2%</span> vs last month</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <!-- Live Matches -->
+      <div class="card">
+        <div class="card-title">🔴 Live Matches <span class="tag tag-live">12 live</span></div>
+        <div class="match-list">
+          <div class="match-row" onclick="showView('fixtures')">
+            <div class="team-home"><div class="team-name">Arsenal</div><div class="league-tag">Premier League</div></div>
+            <div class="score-block"><div class="score">2 – 1</div><div class="score-time">67'</div><div class="score-ht">HT: 1-0</div></div>
+            <div class="team-away"><div class="team-name">Chelsea</div></div>
+          </div>
+          <div class="match-row" onclick="showView('fixtures')">
+            <div class="team-home"><div class="team-name">Real Madrid</div><div class="league-tag">La Liga</div></div>
+            <div class="score-block"><div class="score">1 – 1</div><div class="score-time">45+2'</div><div class="score-ht">HT</div></div>
+            <div class="team-away"><div class="team-name">Barcelona</div></div>
+          </div>
+          <div class="match-row" onclick="showView('fixtures')">
+            <div class="team-home"><div class="team-name">Bayern Munich</div><div class="league-tag">Bundesliga</div></div>
+            <div class="score-block"><div class="score">3 – 0</div><div class="score-time">78'</div><div class="score-ht">HT: 2-0</div></div>
+            <div class="team-away"><div class="team-name">Dortmund</div></div>
+          </div>
+          <div class="match-row" onclick="showView('fixtures')">
+            <div class="team-home"><div class="team-name">PSG</div><div class="league-tag">Ligue 1</div></div>
+            <div class="score-block"><div class="score">0 – 0</div><div class="score-time">23'</div><div class="score-ht"></div></div>
+            <div class="team-away"><div class="team-name">Marseille</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top Predictions -->
+      <div class="card">
+        <div class="card-title">🎯 Top Predictions Today</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="pred-card" onclick="showView('predictions')">
+            <div class="pred-teams">
+              <div class="pred-team">Man City</div>
+              <div class="pred-vs">vs</div>
+              <div class="pred-team">Liverpool</div>
+            </div>
+            <div class="pred-bars">
+              <div class="pred-bar-wrap">
+                <div class="pred-bar-label">Home</div>
+                <div class="pred-bar-outer"><div class="pred-bar-inner home" style="height:58%"></div></div>
+                <div class="pred-pct" style="color:var(--teal)">58%</div>
+              </div>
+              <div class="pred-bar-wrap">
+                <div class="pred-bar-label">Draw</div>
+                <div class="pred-bar-outer"><div class="pred-bar-inner draw" style="height:24%"></div></div>
+                <div class="pred-pct" style="color:var(--muted)">24%</div>
+              </div>
+              <div class="pred-bar-wrap">
+                <div class="pred-bar-label">Away</div>
+                <div class="pred-bar-outer"><div class="pred-bar-inner away" style="height:18%"></div></div>
+                <div class="pred-pct" style="color:var(--sky)">18%</div>
+              </div>
+            </div>
+            <div class="pred-meta"><span class="tag tag-teal">High confidence</span> · Premier League · 20:45</div>
+          </div>
+          <div class="pred-card" onclick="showView('predictions')">
+            <div class="pred-teams">
+              <div class="pred-team">Inter Milan</div>
+              <div class="pred-vs">vs</div>
+              <div class="pred-team">Juventus</div>
+            </div>
+            <div class="pred-bars">
+              <div class="pred-bar-wrap">
+                <div class="pred-bar-label">Home</div>
+                <div class="pred-bar-outer"><div class="pred-bar-inner home" style="height:44%"></div></div>
+                <div class="pred-pct" style="color:var(--teal)">44%</div>
+              </div>
+              <div class="pred-bar-wrap">
+                <div class="pred-bar-label">Draw</div>
+                <div class="pred-bar-outer"><div class="pred-bar-inner draw" style="height:31%"></div></div>
+                <div class="pred-pct" style="color:var(--muted)">31%</div>
+              </div>
+              <div class="pred-bar-wrap">
+                <div class="pred-bar-label">Away</div>
+                <div class="pred-bar-outer"><div class="pred-bar-inner away" style="height:25%"></div></div>
+                <div class="pred-pct" style="color:var(--sky)">25%</div>
+              </div>
+            </div>
+            <div class="pred-meta"><span class="tag tag-sky">Medium</span> · Serie A · 21:00</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- League Table + Goal Distribution -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🏆 Premier League — Top 6</div>
+        <table class="data-table">
+          <thead><tr>
+            <th>#</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th><th>Form</th>
+          </tr></thead>
+          <tbody id="leagueTable"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📊 Goal Distribution — PL 2024/25</div>
+        <div id="goalDist"></div>
+        <div style="margin-top:18px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:12px">
+            <span>Market overview</span><span>Last 380 matches</span>
+          </div>
+          <div class="bar-row"><div class="bar-label">Over 0.5</div><div class="bar-track"><div class="bar-fill teal" style="width:97%"></div></div><div class="bar-pct">97%</div></div>
+          <div class="bar-row"><div class="bar-label">Over 1.5</div><div class="bar-track"><div class="bar-fill teal" style="width:80%"></div></div><div class="bar-pct">80%</div></div>
+          <div class="bar-row"><div class="bar-label">Over 2.5</div><div class="bar-track"><div class="bar-fill sky" style="width:57%"></div></div><div class="bar-pct">57%</div></div>
+          <div class="bar-row"><div class="bar-label">Under 3.5</div><div class="bar-track"><div class="bar-fill orange" style="width:74%"></div></div><div class="bar-pct">74%</div></div>
+          <div class="bar-row"><div class="bar-label">BTTS</div><div class="bar-track"><div class="bar-fill teal" style="width:52%"></div></div><div class="bar-pct">52%</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TEAM STATS ══ -->
+  <div class="view" id="view-team">
+    <div class="pill-row">
+      <button class="pill active">Arsenal</button>
+      <button class="pill">Man City</button>
+      <button class="pill">Liverpool</button>
+      <button class="pill">Chelsea</button>
+      <button class="pill">+ Add Team</button>
+    </div>
+
+    <div class="stat-cards">
+      <div class="stat-card"><div class="stat-label">Home Win Rate</div><div class="stat-value teal">68%</div><div class="stat-change">Last 3 seasons</div></div>
+      <div class="stat-card"><div class="stat-label">Away Win Rate</div><div class="stat-value sky">42%</div><div class="stat-change">Last 3 seasons</div></div>
+      <div class="stat-card"><div class="stat-label">Over 2.5 Home</div><div class="stat-value teal">71%</div><div class="stat-change">Last 5 seasons</div></div>
+      <div class="stat-card"><div class="stat-label">Clean Sheets</div><div class="stat-value">34%</div><div class="stat-change">All competitions</div></div>
+    </div>
+
+    <div class="grid-2">
+      <!-- Home/Away Bars -->
+      <div class="card">
+        <div class="card-title">🏠 Home Record — Arsenal (3yr)</div>
+        <div class="tabs" style="margin-bottom:14px">
+          <button class="tab active">3 Seasons</button>
+          <button class="tab">5 Seasons</button>
+          <button class="tab">All Time</button>
+        </div>
+        <div style="margin-bottom:18px">
+          <div class="bar-row"><div class="bar-label">Win</div><div class="bar-track"><div class="bar-fill teal" style="width:68%"></div></div><div class="bar-pct">68%</div></div>
+          <div class="bar-row"><div class="bar-label">Draw</div><div class="bar-track"><div class="bar-fill sky" style="width:18%"></div></div><div class="bar-pct">18%</div></div>
+          <div class="bar-row"><div class="bar-label">Loss</div><div class="bar-track"><div class="bar-fill orange" style="width:14%"></div></div><div class="bar-pct">14%</div></div>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:14px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;letter-spacing:.08em;text-transform:uppercase">Double chance markets</div>
+          <div class="bar-row"><div class="bar-label">Home/Draw</div><div class="bar-track"><div class="bar-fill teal" style="width:86%"></div></div><div class="bar-pct">86%</div></div>
+          <div class="bar-row"><div class="bar-label">Home/Away</div><div class="bar-track"><div class="bar-fill sky" style="width:82%"></div></div><div class="bar-pct">82%</div></div>
+          <div class="bar-row"><div class="bar-label">Draw/Away</div><div class="bar-track"><div class="bar-fill orange" style="width:32%"></div></div><div class="bar-pct">32%</div></div>
+        </div>
+      </div>
+
+      <!-- HT/FT -->
+      <div class="card">
+        <div class="card-title">🔄 HT/FT Outcomes — Home</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Based on 95 home matches (3 seasons)</div>
+        <div class="htft-grid">
+          <div class="htft-cell"><div class="htft-code">W–W</div><div class="htft-count">47</div><div class="htft-pct">49.5%</div></div>
+          <div class="htft-cell"><div class="htft-code">W–D</div><div class="htft-count">7</div><div class="htft-pct">7.4%</div></div>
+          <div class="htft-cell"><div class="htft-code">W–L</div><div class="htft-count">3</div><div class="htft-pct">3.2%</div></div>
+          <div class="htft-cell"><div class="htft-code">D–W</div><div class="htft-count">16</div><div class="htft-pct">16.8%</div></div>
+          <div class="htft-cell"><div class="htft-code">D–D</div><div class="htft-count">9</div><div class="htft-pct">9.5%</div></div>
+          <div class="htft-cell"><div class="htft-code">D–L</div><div class="htft-count">4</div><div class="htft-pct">4.2%</div></div>
+          <div class="htft-cell"><div class="htft-code">L–W</div><div class="htft-count">2</div><div class="htft-pct">2.1%</div></div>
+          <div class="htft-cell"><div class="htft-code">L–D</div><div class="htft-count">2</div><div class="htft-pct">2.1%</div></div>
+          <div class="htft-cell"><div class="htft-code">L–L</div><div class="htft-count">5</div><div class="htft-pct">5.3%</div></div>
+        </div>
+        <div style="margin-top:14px;padding:10px;background:rgba(28,182,160,0.08);border-radius:8px;border:1px solid rgba(28,182,160,0.2);font-size:12px">
+          <span style="color:var(--teal);font-weight:600">Win Both Halves:</span> <span style="font-family:var(--font-mono)">47/95 → 49.5%</span>
+          <span style="color:var(--muted);margin-left:12px">Come from behind:</span> <span style="font-family:var(--font-mono)">18/95 → 18.9%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Over/Under + Goals -->
+    <div class="card">
+      <div class="card-title">⚽ Goals Analysis — Arsenal at Home</div>
+      <div class="grid-3" style="margin-bottom:0">
+        <div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.08em">Over/Under</div>
+          <div class="bar-row"><div class="bar-label">Over 0.5</div><div class="bar-track"><div class="bar-fill teal" style="width:97%"></div></div><div class="bar-pct">97%</div></div>
+          <div class="bar-row"><div class="bar-label">Over 1.5</div><div class="bar-track"><div class="bar-fill teal" style="width:89%"></div></div><div class="bar-pct">89%</div></div>
+          <div class="bar-row"><div class="bar-label">Over 2.5</div><div class="bar-track"><div class="bar-fill sky" style="width:71%"></div></div><div class="bar-pct">71%</div></div>
+          <div class="bar-row"><div class="bar-label">Under 3.5</div><div class="bar-track"><div class="bar-fill orange" style="width:64%"></div></div><div class="bar-pct">64%</div></div>
+          <div class="bar-row"><div class="bar-label">Under 4.5</div><div class="bar-track"><div class="bar-fill orange" style="width:84%"></div></div><div class="bar-pct">84%</div></div>
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.08em">Scoring stats</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:10px;text-align:center">
+              <div style="font-family:var(--font-mono);font-size:20px;font-weight:700;color:var(--teal)">2.4</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:3px">Avg goals scored</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:10px;text-align:center">
+              <div style="font-family:var(--font-mono);font-size:20px;font-weight:700;color:var(--sky)">0.8</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:3px">Avg goals conceded</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:10px;text-align:center">
+              <div style="font-family:var(--font-mono);font-size:20px;font-weight:700;color:var(--teal)">63%</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:3px">BTTS rate</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:10px;text-align:center">
+              <div style="font-family:var(--font-mono);font-size:20px;font-weight:700;color:var(--sky)">34%</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:3px">Clean sheet</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.08em">Timing</div>
+          <div class="bar-row"><div class="bar-label left">1–15'</div><div class="bar-track"><div class="bar-fill teal" style="width:18%"></div></div><div class="bar-pct">18%</div></div>
+          <div class="bar-row"><div class="bar-label left">16–30'</div><div class="bar-track"><div class="bar-fill teal" style="width:22%"></div></div><div class="bar-pct">22%</div></div>
+          <div class="bar-row"><div class="bar-label left">31–45'</div><div class="bar-track"><div class="bar-fill sky" style="width:16%"></div></div><div class="bar-pct">16%</div></div>
+          <div class="bar-row"><div class="bar-label left">46–60'</div><div class="bar-track"><div class="bar-fill sky" style="width:20%"></div></div><div class="bar-pct">20%</div></div>
+          <div class="bar-row"><div class="bar-label left">61–75'</div><div class="bar-track"><div class="bar-fill teal" style="width:28%"></div></div><div class="bar-pct">28%</div></div>
+          <div class="bar-row"><div class="bar-label left">76–90'</div><div class="bar-track"><div class="bar-fill orange" style="width:32%"></div></div><div class="bar-pct">32%</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ FIXTURES ══ -->
+  <div class="view" id="view-fixtures">
+    <div class="pill-row">
+      <button class="pill active">All</button>
+      <button class="pill">Premier League</button>
+      <button class="pill">La Liga</button>
+      <button class="pill">Bundesliga</button>
+      <button class="pill">Serie A</button>
+      <button class="pill">Champions League</button>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">📅 Today — Mon 19 May 2026</div>
+        <div class="match-list" id="todayMatches"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📅 Tomorrow — Tue 20 May 2026</div>
+        <div class="match-list" id="tomorrowMatches"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">🔴 Live Now</div>
+      <div class="match-list" id="liveMatches"></div>
+    </div>
+  </div>
+
+  <!-- ══ PREDICTIONS ══ -->
+  <div class="view" id="view-predictions">
+    <div class="stat-cards">
+      <div class="stat-card"><div class="stat-label">Today's Predictions</div><div class="stat-value teal">24</div></div>
+      <div class="stat-card"><div class="stat-label">High Confidence</div><div class="stat-value sky">8</div></div>
+      <div class="stat-card"><div class="stat-label">30-day Accuracy</div><div class="stat-value teal">68.4%</div></div>
+      <div class="stat-card"><div class="stat-label">Model Version</div><div class="stat-value" style="font-size:20px;font-family:var(--font-mono)">v2.4</div></div>
+    </div>
+    <div id="predGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px"></div>
+  </div>
+
+  <!-- ══ LEAGUES ══ -->
+  <div class="view" id="view-leagues">
+    <div class="card">
+      <div class="card-title">🏆 Premier League 2024/25 — Full Table</div>
+      <table class="data-table" style="width:100%">
+        <thead><tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th>Form</th></tr></thead>
+        <tbody id="fullLeagueTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ H2H ══ -->
+  <div class="view" id="view-h2h">
+    <div class="grid-2" style="margin-bottom:20px">
+      <div class="card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+        <div style="font-size:13px;color:var(--muted)">Home Team</div>
+        <div style="font-family:var(--font-head);font-size:26px;font-weight:800;color:var(--teal)">Arsenal</div>
+      </div>
+      <div class="card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+        <div style="font-size:13px;color:var(--muted)">Away Team</div>
+        <div style="font-family:var(--font-head);font-size:26px;font-weight:800;color:var(--sky)">Chelsea</div>
+      </div>
+    </div>
+    <div class="grid-3">
+      <div class="card" style="text-align:center">
+        <div class="arc-wrap">
+          <svg viewBox="0 0 90 90"><circle cx="45" cy="45" r="38" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="8"/><circle cx="45" cy="45" r="38" fill="none" stroke="var(--teal)" stroke-width="8" stroke-dasharray="143 240" stroke-linecap="round"/></svg>
+          <div class="arc-center"><div class="arc-val">18</div><div class="arc-sub">wins</div></div>
+        </div>
+        <div style="font-family:var(--font-head);font-size:14px;color:var(--teal)">Arsenal</div>
+        <div style="font-size:11px;color:var(--muted)">Last 5 seasons</div>
+      </div>
+      <div class="card" style="text-align:center">
+        <div class="arc-wrap">
+          <svg viewBox="0 0 90 90"><circle cx="45" cy="45" r="38" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="8"/><circle cx="45" cy="45" r="38" fill="none" stroke="#4e5d7d" stroke-width="8" stroke-dasharray="56 240" stroke-linecap="round"/></svg>
+          <div class="arc-center"><div class="arc-val" style="color:var(--muted)">7</div><div class="arc-sub">draws</div></div>
+        </div>
+        <div style="font-family:var(--font-head);font-size:14px;color:var(--muted)">Draws</div>
+        <div style="font-size:11px;color:var(--muted)">Last 5 seasons</div>
+      </div>
+      <div class="card" style="text-align:center">
+        <div class="arc-wrap">
+          <svg viewBox="0 0 90 90"><circle cx="45" cy="45" r="38" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="8"/><circle cx="45" cy="45" r="38" fill="none" stroke="var(--sky)" stroke-width="8" stroke-dasharray="90 240" stroke-linecap="round"/></svg>
+          <div class="arc-center"><div class="arc-val" style="color:var(--sky)">12</div><div class="arc-sub">wins</div></div>
+        </div>
+        <div style="font-family:var(--font-head);font-size:14px;color:var(--sky)">Chelsea</div>
+        <div style="font-size:11px;color:var(--muted)">Last 5 seasons</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:18px">
+      <div class="card-title">Recent H2H Results</div>
+      <div class="match-list">
+        <div class="match-row"><div class="team-home"><div class="team-name" style="color:var(--teal)">Arsenal</div><div class="league-tag">Apr 2025 · PL</div></div><div class="score-block"><div class="score">3–1</div><div class="score-ht">HT: 2-0</div></div><div class="team-away"><div class="team-name">Chelsea</div></div></div>
+        <div class="match-row"><div class="team-home"><div class="team-name">Chelsea</div><div class="league-tag">Nov 2024 · PL</div></div><div class="score-block"><div class="score">1–1</div><div class="score-ht">HT: 0-1</div></div><div class="team-away"><div class="team-name" style="color:var(--teal)">Arsenal</div></div></div>
+        <div class="match-row"><div class="team-home"><div class="team-name" style="color:var(--teal)">Arsenal</div><div class="league-tag">Apr 2024 · PL</div></div><div class="score-block"><div class="score">5–0</div><div class="score-ht">HT: 3-0</div></div><div class="team-away"><div class="team-name">Chelsea</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ MARKETS ══ -->
+  <div class="view" id="view-markets">
+    <div class="grid-3">
+      <div class="card"><div class="card-title">1X2 Markets</div>
+        <div class="bar-row"><div class="bar-label">Home win</div><div class="bar-track"><div class="bar-fill teal" style="width:46%"></div></div><div class="bar-pct">46%</div></div>
+        <div class="bar-row"><div class="bar-label">Draw</div><div class="bar-track"><div class="bar-fill sky" style="width:25%"></div></div><div class="bar-pct">25%</div></div>
+        <div class="bar-row"><div class="bar-label">Away win</div><div class="bar-track"><div class="bar-fill orange" style="width:29%"></div></div><div class="bar-pct">29%</div></div>
+      </div>
+      <div class="card"><div class="card-title">Double Chance</div>
+        <div class="bar-row"><div class="bar-label">Home/Draw</div><div class="bar-track"><div class="bar-fill teal" style="width:71%"></div></div><div class="bar-pct">71%</div></div>
+        <div class="bar-row"><div class="bar-label">Home/Away</div><div class="bar-track"><div class="bar-fill sky" style="width:75%"></div></div><div class="bar-pct">75%</div></div>
+        <div class="bar-row"><div class="bar-label">Draw/Away</div><div class="bar-track"><div class="bar-fill orange" style="width:54%"></div></div><div class="bar-pct">54%</div></div>
+      </div>
+      <div class="card"><div class="card-title">Goals Markets</div>
+        <div class="bar-row"><div class="bar-label left">Over 1.5</div><div class="bar-track"><div class="bar-fill teal" style="width:80%"></div></div><div class="bar-pct">80%</div></div>
+        <div class="bar-row"><div class="bar-label left">Over 2.5</div><div class="bar-track"><div class="bar-fill teal" style="width:57%"></div></div><div class="bar-pct">57%</div></div>
+        <div class="bar-row"><div class="bar-label left">Under 3.5</div><div class="bar-track"><div class="bar-fill sky" style="width:74%"></div></div><div class="bar-pct">74%</div></div>
+        <div class="bar-row"><div class="bar-label left">BTTS Yes</div><div class="bar-track"><div class="bar-fill orange" style="width:52%"></div></div><div class="bar-pct">52%</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ HT/FT VIEW ══ -->
+  <div class="view" id="view-htft">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🔄 HT/FT — Premier League 2024/25</div>
+        <div class="htft-grid">
+          <div class="htft-cell"><div class="htft-code">W–W</div><div class="htft-count" style="color:var(--teal)">124</div><div class="htft-pct">32.6%</div></div>
+          <div class="htft-cell"><div class="htft-code">W–D</div><div class="htft-count">31</div><div class="htft-pct">8.2%</div></div>
+          <div class="htft-cell"><div class="htft-code">W–L</div><div class="htft-count">12</div><div class="htft-pct">3.2%</div></div>
+          <div class="htft-cell"><div class="htft-code">D–W</div><div class="htft-count">64</div><div class="htft-pct">16.8%</div></div>
+          <div class="htft-cell"><div class="htft-code">D–D</div><div class="htft-count" style="color:var(--muted)">44</div><div class="htft-pct">11.6%</div></div>
+          <div class="htft-cell"><div class="htft-code">D–L</div><div class="htft-count">28</div><div class="htft-pct">7.4%</div></div>
+          <div class="htft-cell"><div class="htft-code">L–W</div><div class="htft-count">18</div><div class="htft-pct">4.7%</div></div>
+          <div class="htft-cell"><div class="htft-code">L–D</div><div class="htft-count">14</div><div class="htft-pct">3.7%</div></div>
+          <div class="htft-cell"><div class="htft-code">L–L</div><div class="htft-count" style="color:var(--sky)">45</div><div class="htft-pct">11.8%</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 Key Insights</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="padding:12px;background:rgba(28,182,160,0.08);border:1px solid rgba(28,182,160,0.2);border-radius:10px">
+            <div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:4px">Win Both Halves</div>
+            <div style="font-family:var(--font-mono);font-size:22px;font-weight:700">32.6%</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">124 of 380 matches</div>
+          </div>
+          <div style="padding:12px;background:rgba(77,188,233,0.08);border:1px solid rgba(77,188,233,0.2);border-radius:10px">
+            <div style="font-size:12px;font-weight:600;color:var(--sky);margin-bottom:4px">Comeback wins (home)</div>
+            <div style="font-family:var(--font-mono);font-size:22px;font-weight:700">16.8%</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">Home team trailing at HT, wins FT</div>
+          </div>
+          <div style="padding:12px;background:rgba(251,146,60,0.08);border:1px solid rgba(251,146,60,0.2);border-radius:10px">
+            <div style="font-size:12px;font-weight:600;color:#fb923c;margin-bottom:4px">Nil-nil both halves</div>
+            <div style="font-family:var(--font-mono);font-size:22px;font-weight:700">3.2%</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">12 matches this season</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+
+<script>
+const teams=[
+  {name:'Arsenal',p:36,w:25,d:6,l:5,gf:72,ga:28,gd:44,pts:81,form:['W','W','D','W','W'],color:'#ef4444'},
+  {name:'Man City',p:36,w:22,d:8,l:6,gf:68,ga:38,gd:30,pts:74,form:['W','W','W','D','L'],color:'#60a5fa'},
+  {name:'Liverpool',p:36,w:22,d:7,l:7,gf:75,ga:40,gd:35,pts:73,form:['W','D','W','W','L'],color:'#f97316'},
+  {name:'Chelsea',p:36,w:18,d:8,l:10,gf:62,ga:48,gd:14,pts:62,form:['W','L','W','D','W'],color:'#3b82f6'},
+  {name:'Newcastle',p:36,w:17,d:9,l:10,gf:58,ga:42,gd:16,pts:60,form:['D','W','L','W','W'],color:'#e5e7eb'},
+  {name:'Aston Villa',p:36,w:17,d:8,l:11,gf:55,ga:50,gd:5,pts:59,form:['L','W','W','D','W'],color:'#a855f7'},
+];
+
+function formDots(form){return form.map(r=>`<div class="fd fd-${r.toLowerCase()}">${r}</div>`).join('')}
+
+function buildTable(tbodyId,teams){
+  const tbody=document.getElementById(tbodyId);
+  if(!tbody)return;
+  tbody.innerHTML=teams.map((t,i)=>`
+    <tr>
+      <td class="rank-num">${i+1}</td>
+      <td><div class="team-cell"><div class="team-dot" style="background:${t.color}"></div>${t.name}</div></td>
+      <td class="rank-num">${t.p}</td>
+      <td>${t.w}</td><td>${t.d}</td><td>${t.l}</td>
+      ${t.gf!==undefined?`<td>${t.gf}</td><td>${t.ga}</td>`:''}
+      <td class="rank-num">${t.gd>0?'+'+t.gd:t.gd}</td>
+      <td class="pts">${t.pts}</td>
+      <td><div class="form-dots">${formDots(t.form)}</div></td>
+    </tr>`).join('');
+}
+
+buildTable('leagueTable',teams.slice(0,6));
+buildTable('fullLeagueTable',teams);
+
+const todayGames=[
+  {home:'Tottenham',away:'West Ham',time:'13:30',league:'Premier League',score:'2–0',live:true,ht:'HT: 1-0'},
+  {home:'Brentford',away:'Fulham',time:'16:00',league:'Premier League',score:'1–1',live:true,ht:'HT: 0-1'},
+  {home:'Atletico',away:'Sevilla',time:'18:00',league:'La Liga',score:'–',live:false,ht:''},
+  {home:'Roma',away:'Napoli',time:'20:45',league:'Serie A',score:'–',live:false,ht:''},
+];
+
+const tomorrowGames=[
+  {home:'Man United',away:'Brighton',time:'20:00',league:'Premier League',score:'–',live:false,ht:''},
+  {home:'Everton',away:'Wolves',time:'20:00',league:'Premier League',score:'–',live:false,ht:''},
+  {home:'Leverkusen',away:'Mainz',time:'19:30',league:'Bundesliga',score:'–',live:false,ht:''},
+];
+
+function matchHTML(m){
+  return `<div class="match-row">
+    <div class="team-home"><div class="team-name">${m.home}</div><div class="league-tag">${m.league}</div></div>
+    <div class="score-block">
+      <div class="score">${m.score}</div>
+      <div class="score-time">${m.live?'<span style="color:#22c55e">●</span> LIVE':m.time}</div>
+      <div class="score-ht">${m.ht}</div>
+    </div>
+    <div class="team-away"><div class="team-name">${m.away}</div></div>
+  </div>`;
+}
+
+document.getElementById('todayMatches').innerHTML=todayGames.filter(g=>!g.live).map(matchHTML).join('');
+document.getElementById('tomorrowMatches').innerHTML=tomorrowGames.map(matchHTML).join('');
+document.getElementById('liveMatches').innerHTML=todayGames.filter(g=>g.live).map(matchHTML).join('');
+
+const predictions=[
+  {home:'Man City',away:'Liverpool',h:58,d:24,a:18,conf:'High',league:'Premier League',time:'20:45'},
+  {home:'Inter Milan',away:'Juventus',h:44,d:31,a:25,conf:'Medium',league:'Serie A',time:'21:00'},
+  {home:'Real Madrid',away:'Atletico',h:52,d:28,a:20,conf:'High',league:'La Liga',time:'21:00'},
+  {home:'PSG',away:'Marseille',h:61,d:22,a:17,conf:'High',league:'Ligue 1',time:'21:00'},
+  {home:'Dortmund',away:'Leipzig',h:38,d:30,a:32,conf:'Low',league:'Bundesliga',time:'19:30'},
+  {home:'AC Milan',away:'Lazio',h:49,d:28,a:23,conf:'Medium',league:'Serie A',time:'20:45'},
+];
+
+document.getElementById('predGrid').innerHTML=predictions.map(p=>`
+  <div class="pred-card">
+    <div class="pred-teams">
+      <div class="pred-team">${p.home}</div>
+      <div class="pred-vs">vs</div>
+      <div class="pred-team">${p.away}</div>
+    </div>
+    <div class="pred-bars">
+      <div class="pred-bar-wrap">
+        <div class="pred-bar-label">Home</div>
+        <div class="pred-bar-outer"><div class="pred-bar-inner home" style="height:${p.h}%"></div></div>
+        <div class="pred-pct" style="color:var(--teal)">${p.h}%</div>
+      </div>
+      <div class="pred-bar-wrap">
+        <div class="pred-bar-label">Draw</div>
+        <div class="pred-bar-outer"><div class="pred-bar-inner draw" style="height:${p.d}%"></div></div>
+        <div class="pred-pct" style="color:var(--muted)">${p.d}%</div>
+      </div>
+      <div class="pred-bar-wrap">
+        <div class="pred-bar-label">Away</div>
+        <div class="pred-bar-outer"><div class="pred-bar-inner away" style="height:${p.a}%"></div></div>
+        <div class="pred-pct" style="color:var(--sky)">${p.a}%</div>
+      </div>
+    </div>
+    <div class="pred-meta">
+      <span class="tag ${p.conf==='High'?'tag-teal':p.conf==='Medium'?'tag-sky':'tag-orange'}">${p.conf}</span>
+      · ${p.league} · ${p.time}
+    </div>
+  </div>`).join('');
+
+const views={
+  dashboard:{title:'Dashboard',crumb:'Overview'},
+  team:{title:'Team Stats',crumb:'Analytics / Team'},
+  fixtures:{title:'Fixtures',crumb:'Schedule / Today'},
+  predictions:{title:'Predictions',crumb:'AI Predictions'},
+  leagues:{title:'Leagues',crumb:'Analytics / Leagues'},
+  h2h:{title:'Head to Head',crumb:'Analytics / H2H'},
+  markets:{title:'Betting Markets',crumb:'Markets / Overview'},
+  htft:{title:'HT / FT Analysis',crumb:'Markets / HT-FT'},
+};
+
+function showView(id){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const v=document.getElementById('view-'+id);
+  if(v)v.classList.add('active');
+  const info=views[id]||{title:id,crumb:id};
+  document.getElementById('pageTitle').textContent=info.title;
+  document.getElementById('pageBreadcrumb').innerHTML=`MatchTrackr / <span>${info.crumb}</span>`;
+  document.querySelectorAll('.nav-item').forEach(btn=>{
+    if(btn.getAttribute('onclick')&&btn.getAttribute('onclick').includes("'"+id+"'"))
+      btn.classList.add('active');
+  });
+  window.scrollTo(0,0);
+}
+
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',function(){
+    this.closest('.tabs').querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+document.querySelectorAll('.pill').forEach(p=>{
+  p.addEventListener('click',function(){
+    this.closest('.pill-row').querySelectorAll('.pill').forEach(x=>x.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+</script>
+</body>
+</html>
